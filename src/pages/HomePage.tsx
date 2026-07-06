@@ -175,7 +175,7 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
                             placeholder="Nome do jogador"
                             className="w-full border-none bg-transparent text-slate-950 outline-none placeholder:text-slate-400"
                         />
-                        <p className="mt-2 text-xs text-slate-500">Você pode colar uma lista como “Confirmados: 1 - Marcos Porto 2 - Marlon”.</p>
+                        <p className="mt-2 text-xs text-slate-500">Você pode colar uma lista como “Confirmados: 1 - Ciclano 2 - Beltrano.</p>
                         {form.formState.errors.nome && <p className="mt-2 text-sm text-rose-500">{form.formState.errors.nome.message}</p>}
                     </div>
                     <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-3xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
