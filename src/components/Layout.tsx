@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Settings2, ShieldCheck } from 'lucide-react';
+import { Toaster } from 'sonner';
 
 interface LayoutProps {
     children: ReactNode;
@@ -30,6 +31,7 @@ export function Layout({ children }: LayoutProps) {
             <footer className="mt-8 border-t border-slate-200/40 pt-4 text-center text-[11px] leading-6 text-slate-500">
                 © 2026 Marcos Antonio Porto Matos. Todos os direitos reservados.
             </footer>
+            <Toaster position="top-right" richColors />
         </div>
     );
 }

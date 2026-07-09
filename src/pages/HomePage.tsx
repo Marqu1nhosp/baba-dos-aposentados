@@ -1,4 +1,5 @@
 import { useState, type ClipboardEvent } from 'react';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Plus, Shuffle, Trash2 } from 'lucide-react';
@@ -12,7 +13,7 @@ function shufflePlayers<T>(players: T[]) {
 export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][]) => void }) {
     const [players, setPlayers] = useLocalStorage<string[]>('baba-players', [], 30);
     const [selectedPlayers, setSelectedPlayers] = useLocalStorage<string[]>('baba-selected-players', [], 30);
-    const [toastMessage, setToastMessage] = useState('');
+
 
     const form = useForm<PlayerFormData>({
         resolver: zodResolver(playerSchema),
@@ -78,13 +79,13 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
         if (!name) return;
 
         if (players.includes(name)) {
-            setToastMessage('Nome duplicado não é permitido.');
+            toast.error('Nome duplicado não é permitido.');
             return;
         }
         setPlayers([...players, name]);
         setSelectedPlayers([...selectedPlayers, name]);
         form.reset();
-        setToastMessage('Jogador adicionado com sucesso.');
+        toast.success('Jogador adicionado com sucesso.');
     };
 
     const handlePasteNames = (event: ClipboardEvent<HTMLInputElement>) => {
@@ -97,14 +98,14 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
 
         const newNames = parsedNames.filter((name) => name.trim().length > 1 && !players.includes(name));
         if (newNames.length === 0) {
-            setToastMessage('Esses nomes já foram adicionados.');
+            toast.error('Esses nomes já foram adicionados.');
             return;
         }
 
         setPlayers([...players, ...newNames]);
         setSelectedPlayers([...selectedPlayers, ...newNames]);
         form.reset();
-        setToastMessage(`${newNames.length} jogadores adicionados com colagem.`);
+        toast.success(`${newNames.length} jogadores adicionados com colagem.`);
     };
 
     const toggleSelection = (name: string) => {
@@ -116,12 +117,17 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
     const handleRemovePlayer = (name: string) => {
         setPlayers(players.filter((player) => player !== name));
         setSelectedPlayers(selectedPlayers.filter((player) => player !== name));
-        setToastMessage(`${name} removido.`);
+        toast(`${name} removido.`, {
+            position: 'bottom-center', duration: 1000, style: {
+                background: '#f87171',
+                color: '#ffffff',
+            }
+        });
     };
 
     const handleSortTeams = () => {
         if (selectedPlayers.length < 5) {
-            setToastMessage('Selecione pelo menos 5 jogadores.');
+            toast.error('Selecione pelo menos 5 jogadores.');
             return;
         }
 
@@ -138,7 +144,7 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
             window.localStorage.setItem('baba-teams', JSON.stringify({ value: newTeams, expiry }));
         }
 
-        setToastMessage('Times sorteados!');
+        toast.success('Times sorteados!');
     };
 
 
@@ -218,11 +224,7 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
             </section>
 
 
-            {toastMessage && (
-                <div className="fixed bottom-24 left-1/2 z-50 w-[calc(100%-3rem)] -translate-x-1/2 rounded-3xl border border-slate-800/80 bg-slate-950/95 px-4 py-3 text-sm text-slate-100 shadow-soft backdrop-blur-xl">
-                    {toastMessage}
-                </div>
-            )}
+
         </div>
     );
 }

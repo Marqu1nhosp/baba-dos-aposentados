@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { ArrowLeft, Share2, ClipboardCopy, Gift, Shield, Shirt, Users } from 'lucide-react';
+import { toast } from 'sonner';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
 export function ResultPage({ teams, onBack }: { teams: string[][]; onBack: () => void }) {
@@ -9,10 +10,18 @@ export function ResultPage({ teams, onBack }: { teams: string[][]; onBack: () =>
     const formattedResult = useMemo(() => {
         if (effectiveTeams.length === 0) return '';
 
+        const getTeamEmoji = (index: number) => {
+            const isLast = index === effectiveTeams.length - 1;
+            if (isLast) return '⚫'; // preto sempre o último
+            if (index === 0) return '🔴';
+            if (index === 1) return '🔵';
+            return '🟢';
+        };
+
         return ['⚽ BABA DOS APOSENTADOS', '']
             .concat(
                 effectiveTeams.flatMap((team, index) => [
-                    `🟢 TIME ${index + 1}`,
+                    `${getTeamEmoji(index)} TIME ${index + 1}`,
                     ...team.map((player) => `• ${player}`),
                     '',
                 ]),
@@ -22,7 +31,12 @@ export function ResultPage({ teams, onBack }: { teams: string[][]; onBack: () =>
 
     const copyResult = async () => {
         if (!formattedResult) return;
-        await navigator.clipboard.writeText(formattedResult);
+        try {
+            await navigator.clipboard.writeText(formattedResult);
+            toast.success('Resultado copiado');
+        } catch (err) {
+            toast.error('Não foi possível copiar o resultado');
+        }
     };
 
     const shareWhatsApp = () => {
@@ -48,8 +62,9 @@ export function ResultPage({ teams, onBack }: { teams: string[][]; onBack: () =>
 
             <div className="space-y-4">
                 {effectiveTeams.map((team, index) => {
-                    const headerClass = index === 0 ? 'bg-rose-600' : index === 1 ? 'bg-blue-600' : 'bg-emerald-600';
-                    const badgeClass = index === 0 ? 'bg-rose-600 text-white' : index === 1 ? 'bg-blue-600 text-white' : 'bg-emerald-600 text-white';
+                    const isLast = index === effectiveTeams.length - 1;
+                    const headerClass = index === 0 ? 'bg-rose-600' : index === 1 ? 'bg-blue-600' : isLast ? 'bg-black' : 'bg-emerald-600';
+                    const badgeClass = index === 0 ? 'bg-rose-600 text-white' : index === 1 ? 'bg-blue-600 text-white' : isLast ? 'bg-black text-white' : 'bg-emerald-600 text-white';
                     return (
                         <section key={index} className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
                             <div className={`relative overflow-hidden flex items-center gap-3 px-5 py-4 text-sm font-semibold text-white ${headerClass}`}>
