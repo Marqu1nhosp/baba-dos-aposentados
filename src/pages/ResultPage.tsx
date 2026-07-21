@@ -3,31 +3,43 @@ import { ArrowLeft, Share2, ClipboardCopy, Gift, Shield, Shirt, Users } from 'lu
 import { toast } from 'sonner';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
+const teamColorOptions = [
+    { headerClass: 'bg-rose-600', badgeClass: 'bg-rose-600 text-white', emoji: '🔴' },
+    { headerClass: 'bg-blue-600', badgeClass: 'bg-blue-600 text-white', emoji: '🔵' },
+    { headerClass: 'bg-emerald-600', badgeClass: 'bg-emerald-600 text-white', emoji: '🟢' },
+    { headerClass: 'bg-amber-500', badgeClass: 'bg-amber-500 text-white', emoji: '🟡' },
+    { headerClass: 'bg-black', badgeClass: 'bg-black text-white', emoji: '⚫' },
+] as const;
+
 export function ResultPage({ teams, onBack }: { teams: string[][]; onBack: () => void }) {
     const [storedTeams] = useLocalStorage<string[][]>('baba-teams', [], 30);
     const effectiveTeams = teams.length > 0 ? teams : storedTeams;
 
+    const teamStyles = useMemo(() => {
+        if (effectiveTeams.length === 0) return [];
+
+        const colors = [...teamColorOptions];
+        for (let index = colors.length - 1; index > 0; index -= 1) {
+            const randomIndex = Math.floor(Math.random() * (index + 1));
+            [colors[index], colors[randomIndex]] = [colors[randomIndex], colors[index]];
+        }
+
+        return effectiveTeams.map((_, teamIndex) => colors[teamIndex % colors.length]);
+    }, [effectiveTeams]);
+
     const formattedResult = useMemo(() => {
         if (effectiveTeams.length === 0) return '';
-
-        const getTeamEmoji = (index: number) => {
-            const isLast = index === effectiveTeams.length - 1;
-            if (isLast) return '⚫'; // preto sempre o último
-            if (index === 0) return '🔴';
-            if (index === 1) return '🔵';
-            return '🟢';
-        };
 
         return ['⚽ BABA DOS APOSENTADOS', '']
             .concat(
                 effectiveTeams.flatMap((team, index) => [
-                    `${getTeamEmoji(index)} TIME ${index + 1}`,
+                    `${teamStyles[index]?.emoji ?? '⚫'} TIME ${index + 1}`,
                     ...team.map((player) => `• ${player}`),
                     '',
                 ]),
             )
             .join('\n');
-    }, [effectiveTeams]);
+    }, [effectiveTeams, teamStyles]);
 
     const copyResult = async () => {
         if (!formattedResult) return;
@@ -62,12 +74,10 @@ export function ResultPage({ teams, onBack }: { teams: string[][]; onBack: () =>
 
             <div className="space-y-4">
                 {effectiveTeams.map((team, index) => {
-                    const isLast = index === effectiveTeams.length - 1;
-                    const headerClass = index === 0 ? 'bg-rose-600' : index === 1 ? 'bg-blue-600' : isLast ? 'bg-black' : 'bg-emerald-600';
-                    const badgeClass = index === 0 ? 'bg-rose-600 text-white' : index === 1 ? 'bg-blue-600 text-white' : isLast ? 'bg-black text-white' : 'bg-emerald-600 text-white';
+                    const teamStyle = teamStyles[index] ?? teamColorOptions[0];
                     return (
                         <section key={index} className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-                            <div className={`relative overflow-hidden flex items-center gap-3 px-5 py-4 text-sm font-semibold text-white ${headerClass}`}>
+                            <div className={`relative overflow-hidden flex items-center gap-3 px-5 py-4 text-sm font-semibold text-white ${teamStyle.headerClass}`}>
                                 <div className="pointer-events-none absolute inset-0 opacity-25">
                                     <svg viewBox="0 0 480 160" className="h-full w-full" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M0 148 H480" />
@@ -98,7 +108,7 @@ export function ResultPage({ teams, onBack }: { teams: string[][]; onBack: () =>
                             <div className="divide-y divide-slate-200">
                                 {team.map((player, playerIndex) => (
                                     <div key={player} className="flex items-center gap-4 px-5 py-4 text-sm text-slate-950">
-                                        <div className={`relative flex h-14 w-14 items-center justify-center rounded-3xl ${badgeClass}`}>
+                                        <div className={`relative flex h-14 w-14 items-center justify-center rounded-3xl ${teamStyle.badgeClass}`}>
                                             <Shirt className="absolute h-8 w-8 text-white/80" />
                                             <span className="relative z-10 text-base font-semibold text-white">{playerIndex + 1}</span>
                                         </div>
