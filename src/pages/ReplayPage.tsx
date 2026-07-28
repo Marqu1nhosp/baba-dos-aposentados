@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, CircleSlash, Film, Save, Sparkles, TimerReset } from 'lucide-react';
+import { Camera, CircleSlash, Download, Film, Save, Sparkles, TimerReset } from 'lucide-react';
 
 type StoredVideo = {
     id: string;
@@ -311,6 +311,22 @@ export function ReplayPage() {
         }
     }, [clearAutoDiscardTimer, refreshSavedVideos, startRecordingSegment]);
 
+    const handleExportToGallery = useCallback((video: StoredVideo) => {
+        try {
+            const link = document.createElement('a');
+            link.href = video.url;
+            link.download = `lance-${video.id}.webm`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setError('Vídeo preparado para download na galeria do dispositivo.');
+        } catch (exportError) {
+            console.error(exportError);
+            setError('Não foi possível abrir o download do vídeo.');
+        }
+    }, []);
+
     const handleDiscardPending = useCallback(async () => {
         const currentPending = pendingVideoRef.current;
         if (!currentPending || !databaseRef.current) {
@@ -536,9 +552,15 @@ export function ReplayPage() {
                         {savedVideos.map((video) => (
                             <div key={video.id} className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
                                 <video src={video.url} controls className="h-40 w-full bg-slate-950 object-cover" />
-                                <div className="flex items-center justify-between px-3 py-2 text-sm text-slate-600">
+                                <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-slate-600">
                                     <span>{new Date(video.createdAt).toLocaleString('pt-BR')}</span>
-                                    <span className="font-semibold text-slate-900">Salvo localmente</span>
+                                    <button
+                                        onClick={() => handleExportToGallery(video)}
+                                        className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white"
+                                    >
+                                        <Download className="h-3.5 w-3.5" />
+                                        Salvar na galeria
+                                    </button>
                                 </div>
                             </div>
                         ))}
