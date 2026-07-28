@@ -311,19 +311,40 @@ export function ReplayPage() {
         }
     }, [clearAutoDiscardTimer, refreshSavedVideos, startRecordingSegment]);
 
-    const handleExportToGallery = useCallback((video: StoredVideo) => {
+    const handleExportToGallery = useCallback(async (video: StoredVideo) => {
         try {
+            const extension = video.mimeType.includes('mp4') ? 'mp4' : 'webm';
+
+            const file = new File(
+                [video.blob],
+                `lance-${video.id}.${extension}`,
+                {
+                    type: video.mimeType,
+                }
+            );
+
+            if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Lance salvo',
+                    text: 'Vídeo do replay'
+                });
+
+                setError('Escolha "Salvar Vídeo" para enviar para o app Fotos.');
+                return;
+            }
+
+            const url = URL.createObjectURL(file);
             const link = document.createElement('a');
-            link.href = video.url;
-            link.download = `lance-${video.id}.webm`;
-            link.style.display = 'none';
-            document.body.appendChild(link);
+            link.href = url;
+            link.download = file.name;
             link.click();
-            document.body.removeChild(link);
-            setError('Vídeo preparado para download na galeria do dispositivo.');
-        } catch (exportError) {
-            console.error(exportError);
-            setError('Não foi possível abrir o download do vídeo.');
+
+            URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error(error);
+            setError('Não foi possível abrir o compartilhamento do vídeo.');
         }
     }, []);
 
