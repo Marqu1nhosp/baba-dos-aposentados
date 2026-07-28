@@ -25,12 +25,17 @@ const AUTO_DISCARD_DELAY_MS = 10000;
 
 function getSupportedMimeType(): string | undefined {
     const candidates = [
+        'video/mp4;codecs=h264',
+        'video/mp4',
         'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm',
+        'video/webm'
     ];
 
-    return candidates.find((candidate) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(candidate));
+    return candidates.find(
+        (candidate) =>
+            typeof MediaRecorder !== 'undefined' &&
+            MediaRecorder.isTypeSupported(candidate)
+    );
 }
 
 function openReplayDatabase(): Promise<IDBDatabase> {
