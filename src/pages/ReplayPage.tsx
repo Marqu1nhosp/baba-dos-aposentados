@@ -360,8 +360,15 @@ export function ReplayPage() {
                 databaseRef.current = database;
                 await refreshSavedVideos();
 
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoInputs = devices.filter((device) => device.kind === 'videoinput');
+                const rearCamera = videoInputs.find((device) => /back|rear|environment|traseira/i.test(device.label));
+                const preferredDeviceId = rearCamera?.deviceId;
+
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { ideal: 'environment' } },
+                    video: preferredDeviceId
+                        ? { deviceId: { exact: preferredDeviceId } }
+                        : { facingMode: { ideal: 'environment' } },
                     audio: true,
                 });
 
