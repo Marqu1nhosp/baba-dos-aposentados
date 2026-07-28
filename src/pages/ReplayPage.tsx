@@ -20,8 +20,8 @@ const DB_NAME = 'baba-dos-aposentados-replay';
 const DB_VERSION = 1;
 const PENDING_STORE = 'pending-videos';
 const SAVED_STORE = 'saved-videos';
-const SEGMENT_DURATION_SECONDS = 180;
-const AUTO_DISCARD_DELAY_MS = 120000;
+const SEGMENT_DURATION_SECONDS = 15;
+const AUTO_DISCARD_DELAY_MS = 10000;
 
 function getSupportedMimeType(): string | undefined {
     const candidates = [
@@ -65,12 +65,19 @@ function readAllFromStore<T>(database: IDBDatabase, storeName: string): Promise<
 
 function writeToStore(database: IDBDatabase, storeName: string, value: Record<string, unknown>): Promise<void> {
     return new Promise((resolve, reject) => {
-        const transaction = database.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.put(value);
+        try {
+            const transaction = database.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.put(value);
 
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                transaction.oncomplete = () => resolve();
+            };
+            request.onerror = () => reject(request.error ?? new Error('Falha ao gravar no IndexedDB'));
+            transaction.onerror = () => reject(transaction.error ?? new Error('Falha na transação do IndexedDB'));
+        } catch (error) {
+            reject(error instanceof Error ? error : new Error('Falha inesperada ao gravar no IndexedDB'));
+        }
     });
 }
 
@@ -272,6 +279,13 @@ export function ReplayPage() {
                 url: savedVideoUrl,
             };
 
+            const persistedEntries = await readAllFromStore<SavedVideoEntry>(databaseRef.current, SAVED_STORE);
+            const persistedSavedVideo = persistedEntries.find((entry) => entry.id === savedEntry.id);
+
+            if (!persistedSavedVideo) {
+                throw new Error('O vídeo não ficou persistido no armazenamento local.');
+            }
+
             setSavedVideos((currentSavedVideos) => {
                 const withoutDuplicate = currentSavedVideos.filter((video) => video.id !== savedVideo.id);
                 return [savedVideo, ...withoutDuplicate];
@@ -287,10 +301,11 @@ export function ReplayPage() {
             setIsRecording(false);
             setIsProcessing(false);
             clearAutoDiscardTimer();
+            setError('Lance salvo com sucesso no dispositivo.');
             void startRecordingSegment({ clearPendingVideo: false });
         } catch (databaseError) {
             console.error(databaseError);
-            setError('Não foi possível salvar o lance no dispositivo.');
+            setError('Não foi possível salvar o lance no dispositivo. Tente novamente em um momento sem interrupções.');
         } finally {
             setIsProcessing(false);
         }
