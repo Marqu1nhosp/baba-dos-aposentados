@@ -1,12 +1,20 @@
 import { ReactNode } from 'react';
-import { Settings2, ShieldCheck } from 'lucide-react';
+import { Activity, Clock3, Home, Settings2, ShieldCheck, Users } from 'lucide-react';
 import { Toaster } from 'sonner';
+import { BottomNavigation } from './BottomNavigation';
 
 interface LayoutProps {
     children: ReactNode;
+    activeRoute: 'sorteio' | 'resultado' | 'replay';
+    onNavigate: (route: 'sorteio' | 'resultado' | 'replay') => void;
 }
 
-export function Layout({ children }: LayoutProps) {
+const routes = [
+    { id: 'sorteio', label: 'Sorteio' },
+    { id: 'replay', label: 'Replay' },
+] as const;
+
+export function Layout({ children, activeRoute, onNavigate }: LayoutProps) {
     return (
         <div className="mx-auto flex min-h-screen max-w-md flex-col px-4 py-5 sm:px-6">
             <header className="mb-5 overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 px-5 py-5 text-white shadow-[0_32px_80px_rgba(15,23,42,0.22)]">
@@ -27,10 +35,15 @@ export function Layout({ children }: LayoutProps) {
                 <p className="mt-4 text-sm text-slate-200/80">Sorteio de time do Baba Dos Aposentados.</p>
             </header>
 
-            <main className="flex-1 pb-8">{children}</main>
+            <main className="flex-1 pb-20">{children}</main>
             <footer className="mt-8 border-t border-slate-200/40 pt-4 text-center text-[11px] leading-6 text-slate-500">
                 © 2026 Marcos Antonio Porto Matos. Todos os direitos reservados.
             </footer>
+            <BottomNavigation
+                routes={routes.map((route) => ({ id: route.id as 'sorteio' | 'resultado' | 'replay', label: route.label }))}
+                activeRoute={activeRoute}
+                onChange={(route) => onNavigate(route as 'sorteio' | 'resultado' | 'replay')}
+            />
             <Toaster position="top-right" richColors />
         </div>
     );

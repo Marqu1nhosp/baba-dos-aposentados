@@ -1,14 +1,16 @@
-import { Home, Users, Clock3, Activity, Settings2 } from 'lucide-react';
+import { Activity, Camera, Clock3, Home, Settings2, Users } from 'lucide-react';
 
 const icons = {
     sorteio: Home,
+    resultado: Activity,
+    replay: Camera,
     jogadores: Users,
     historico: Clock3,
     estatisticas: Activity,
     configuracoes: Settings2,
 } as const;
 
-type RouteId = 'sorteio' | 'jogadores' | 'historico' | 'estatisticas' | 'configuracoes';
+type RouteId = 'sorteio' | 'resultado' | 'replay' | 'jogadores' | 'historico' | 'estatisticas' | 'configuracoes';
 
 interface BottomNavigationProps {
     routes: ReadonlyArray<{ id: RouteId; label: string }>;
