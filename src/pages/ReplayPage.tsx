@@ -361,7 +361,7 @@ export function ReplayPage() {
                 await refreshSavedVideos();
 
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'user' },
+                    video: { facingMode: { ideal: 'environment' } },
                     audio: true,
                 });
 
