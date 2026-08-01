@@ -1,10 +1,15 @@
-import { useState, type ClipboardEvent } from 'react';
+import { useEffect, useState, type ClipboardEvent } from 'react';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CheckCircle2, Plus, Shuffle, Trash2 } from 'lucide-react';
 import { playerSchema, PlayerFormData } from '../schemas/player';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+
+const MAX_SORTABLE_PLAYERS = 24;
+const TEAM_SIZE = 6;
+const SORT_LOCK_KEY = 'baba-sort-lock';
+const SORT_LOCK_DURATION = 30 * 60 * 1000;
 
 function shufflePlayers<T>(players: T[]) {
     return [...players].sort(() => Math.random() - 0.5);
@@ -13,7 +18,7 @@ function shufflePlayers<T>(players: T[]) {
 export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][]) => void }) {
     const [players, setPlayers] = useLocalStorage<string[]>('baba-players', [], 30);
     const [selectedPlayers, setSelectedPlayers] = useLocalStorage<string[]>('baba-selected-players', [], 30);
-
+    const [sortLockExpiry, setSortLockExpiry] = useState<number | null>(null);
 
     const form = useForm<PlayerFormData>({
         resolver: zodResolver(playerSchema),
@@ -22,11 +27,25 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
 
     const totalSelected = selectedPlayers.length;
     const totalPlayers = players.length;
-    const teamCount = Math.ceil(totalSelected / 5);
+    const teamCount = Math.ceil(totalSelected / TEAM_SIZE);
 
     const selectedPlayersText = `${totalSelected} jogadores selecionados`;
 
-    const teamsCountText = totalSelected >= 5 ? `Serão formados ${teamCount} times de 5` : 'Selecione ao menos 5 jogadores';
+    const teamsCountText = totalSelected >= TEAM_SIZE
+        ? `Serão formados ${teamCount} times de até ${TEAM_SIZE}`
+        : `Selecione ao menos ${TEAM_SIZE} jogadores`;
+
+    const currentTime = Date.now();
+    //  const isSortLocked = sortLockExpiry !== null && sortLockExpiry > currentTime;
+    //const lockMinutes = isSortLocked ? Math.ceil((sortLockExpiry - currentTime) / 60000) : 0;
+
+    const sortingLimitText = totalSelected > MAX_SORTABLE_PLAYERS
+        ? `Apenas os primeiros ${MAX_SORTABLE_PLAYERS} selecionados podem ser sorteados.`
+        : '';
+
+    // const sortLockText = isSortLocked
+    //     ? `Sorteio bloqueado por mais ${lockMinutes} min.`
+    //     : '';
 
     const parsePlayersFromText = (text: string) => {
         const normalizedText = text
@@ -82,6 +101,7 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
             toast.error('Nome duplicado não é permitido.');
             return;
         }
+
         setPlayers([...players, name]);
         setSelectedPlayers([...selectedPlayers, name]);
         form.reset();
@@ -108,6 +128,18 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
         toast.success(`${newNames.length} jogadores adicionados com colagem.`);
     };
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const rawExpiry = window.localStorage.getItem(SORT_LOCK_KEY);
+        if (!rawExpiry) return;
+
+        const expiry = Number(rawExpiry);
+        if (!Number.isNaN(expiry) && expiry > Date.now()) {
+            setSortLockExpiry(expiry);
+        }
+    }, []);
+
     const toggleSelection = (name: string) => {
         setSelectedPlayers((current) =>
             current.includes(name) ? current.filter((player) => player !== name) : [...current, name],
@@ -126,22 +158,35 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
     };
 
     const handleSortTeams = () => {
-        if (selectedPlayers.length < 5) {
-            toast.error('Selecione pelo menos 5 jogadores.');
+        if (selectedPlayers.length < TEAM_SIZE) {
+            toast.error(`Selecione pelo menos ${TEAM_SIZE} jogadores.`);
+            return;
+        }
+
+        if (selectedPlayers.length > MAX_SORTABLE_PLAYERS) {
+            toast.error(`Só é possível sortear até ${MAX_SORTABLE_PLAYERS} jogadores. Desmarque alguns ou remova excedentes.`);
+            return;
+        }
+
+        if (sortLockExpiry !== null && sortLockExpiry > Date.now()) {
+            toast.error('Sorteio bloqueado por 30 minutos após o último sorteio. Tente novamente mais tarde.');
             return;
         }
 
         const shuffled = shufflePlayers(selectedPlayers);
         const newTeams: string[][] = [];
-        for (let index = 0; index < shuffled.length; index += 5) {
-            newTeams.push(shuffled.slice(index, index + 5));
+        for (let index = 0; index < shuffled.length; index += TEAM_SIZE) {
+            newTeams.push(shuffled.slice(index, index + TEAM_SIZE));
         }
 
         onSortComplete(newTeams);
 
+        const expiry = Date.now() + SORT_LOCK_DURATION;
+        setSortLockExpiry(expiry);
+
         if (typeof window !== 'undefined') {
-            const expiry = Date.now() + 30 * 60 * 1000;
             window.localStorage.setItem('baba-teams', JSON.stringify({ value: newTeams, expiry }));
+            // window.localStorage.setItem(SORT_LOCK_KEY, String(expiry));
         }
 
         toast.success('Times sorteados!');
@@ -216,6 +261,8 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
                 <div className="rounded-3xl bg-emerald-50 px-4 py-4 text-sm text-slate-900 shadow-sm">
                     <p className="font-semibold text-emerald-700">{selectedPlayersText}</p>
                     <p className="mt-1 text-slate-600">{teamsCountText}</p>
+                    {/* {sortingLimitText ? <p className="mt-1 text-sm text-rose-600">{sortingLimitText}</p> : null}
+                    {sortLockText ? <p className="mt-1 text-sm text-rose-600">{sortLockText}</p> : null} */}
                 </div>
 
                 <button onClick={handleSortTeams} type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-3xl bg-emerald-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-emerald-500">

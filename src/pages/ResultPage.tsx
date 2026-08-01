@@ -68,7 +68,7 @@ export function ResultPage({ teams, onBack }: { teams: string[][]; onBack: () =>
                     </div>
                     <h1 className="text-2xl font-semibold">Times sorteados!</h1>
                     <p className="mt-2 text-sm text-emerald-100/80">Boa partida!</p>
-                    <p className="mt-3 text-sm font-semibold text-emerald-100/90">{effectiveTeams.length} times de 5 jogadores</p>
+                    <p className="mt-3 text-sm font-semibold text-emerald-100/90">{effectiveTeams.length} times de até 6 jogadores</p>
                 </div>
             </section>
 
