@@ -7,7 +7,7 @@ import { playerSchema, PlayerFormData } from '../schemas/player';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
 const MAX_SORTABLE_PLAYERS = 24;
-const TEAM_SIZE = 6;
+const DEFAULT_TEAM_SIZE = 6;
 const SORT_LOCK_KEY = 'baba-sort-lock';
 const SORT_LOCK_DURATION = 30 * 60 * 1000;
 
@@ -19,6 +19,7 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
     const [players, setPlayers] = useLocalStorage<string[]>('baba-players', [], 30);
     const [selectedPlayers, setSelectedPlayers] = useLocalStorage<string[]>('baba-selected-players', [], 30);
     const [sortLockExpiry, setSortLockExpiry] = useState<number | null>(null);
+    const [teamSize, setTeamSize] = useState<number>(DEFAULT_TEAM_SIZE);
 
     const form = useForm<PlayerFormData>({
         resolver: zodResolver(playerSchema),
@@ -27,16 +28,16 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
 
     const totalSelected = selectedPlayers.length;
     const totalPlayers = players.length;
-    const teamCount = Math.ceil(totalSelected / TEAM_SIZE);
+    const teamCount = Math.ceil(totalSelected / teamSize);
 
     const selectedPlayersText = `${totalSelected} jogadores selecionados`;
 
-    const teamsCountText = totalSelected >= TEAM_SIZE
-        ? `Serão formados ${teamCount} times de até ${TEAM_SIZE}`
-        : `Selecione ao menos ${TEAM_SIZE} jogadores`;
+    const teamsCountText = totalSelected >= teamSize
+        ? `Serão formados ${teamCount} times de até ${teamSize}`
+        : `Selecione ao menos ${teamSize} jogadores`;
 
     const currentTime = Date.now();
-    //  const isSortLocked = sortLockExpiry !== null && sortLockExpiry > currentTime;
+    //const isSortLocked = sortLockExpiry !== null && sortLockExpiry > currentTime;
     //const lockMinutes = isSortLocked ? Math.ceil((sortLockExpiry - currentTime) / 60000) : 0;
 
     const sortingLimitText = totalSelected > MAX_SORTABLE_PLAYERS
@@ -158,8 +159,8 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
     };
 
     const handleSortTeams = () => {
-        if (selectedPlayers.length < TEAM_SIZE) {
-            toast.error(`Selecione pelo menos ${TEAM_SIZE} jogadores.`);
+        if (selectedPlayers.length < teamSize) {
+            toast.error(`Selecione pelo menos ${teamSize} jogadores.`);
             return;
         }
 
@@ -175,8 +176,8 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
 
         const shuffled = shufflePlayers(selectedPlayers);
         const newTeams: string[][] = [];
-        for (let index = 0; index < shuffled.length; index += TEAM_SIZE) {
-            newTeams.push(shuffled.slice(index, index + TEAM_SIZE));
+        for (let index = 0; index < shuffled.length; index += teamSize) {
+            newTeams.push(shuffled.slice(index, index + teamSize));
         }
 
         onSortComplete(newTeams);
@@ -234,6 +235,27 @@ export function HomePage({ onSortComplete }: { onSortComplete: (teams: string[][
                         Adicionar
                     </button>
                 </form>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <label className={`flex cursor-pointer items-center gap-3 rounded-3xl border px-4 py-3 ${teamSize === 5 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-700'}`}>
+                        <input
+                            type="checkbox"
+                            checked={teamSize === 5}
+                            onChange={() => setTeamSize(5)}
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <span className="text-sm font-medium">Times com 5 jogadores</span>
+                    </label>
+                    <label className={`flex cursor-pointer items-center gap-3 rounded-3xl border px-4 py-3 ${teamSize === 6 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-700'}`}>
+                        <input
+                            type="checkbox"
+                            checked={teamSize === 6}
+                            onChange={() => setTeamSize(6)}
+                            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <span className="text-sm font-medium">Times com 6 jogadores</span>
+                    </label>
+                </div>
 
                 <div className="space-y-3">
                     {players.length === 0 ? (
