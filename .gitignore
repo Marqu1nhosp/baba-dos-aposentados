@@ -4,6 +4,7 @@ node_modules/
 # production
 /dist
 /build
+/.next
 
 # misc
 .DS_Store
@@ -16,8 +17,8 @@ yarn-error.log*
 .env
 .env.local
 
-# Vite
-/.vite
+# Next.js
+/.next/
 
 # editor
 .vscode/
