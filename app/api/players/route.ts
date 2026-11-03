@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { isValidSessionToken } from "@/lib/auth";
 
 const playerCreateSchema = z.object({
   name: z.string().trim().min(2).max(30),
@@ -22,6 +24,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const cookieStore = await cookies();
+  if (!(await isValidSessionToken(cookieStore.get("baba_session")?.value))) {
+    return NextResponse.json({ error: "Acesso não autorizado." }, { status: 401 });
+  }
   try {
     const body: unknown = await request.json();
     const parsed = playerCreateSchema.safeParse(body);

@@ -70,7 +70,7 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
       if (!response.ok) {
         toast.error(
           (result as { error?: string } | null)?.error ??
-            "Não foi possível adicionar o jogador.",
+          "Não foi possível adicionar o jogador.",
         );
         return;
       }
@@ -120,229 +120,261 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
       toast.error(`Selecione pelo menos ${teamSize} jogadores.`);
       return;
     }
-    if (selectedCount > 24) {
-      toast.error("Só é possível sortear até 24 jogadores.");
+    if (selectedCount > 25) {
+      toast.error("Só é possível sortear até 25 jogadores.");
       return;
     }
 
-    const shuffled = players
-      .filter((player) => selectedIds.includes(player.id))
-      .sort(() => Math.random() - 0.5);
-    const newTeams: Player[][] = [];
-    for (let index = 0; index < shuffled.length; index += teamSize) {
-      newTeams.push(shuffled.slice(index, index + teamSize));
+    const selectedPlayers = players.filter((player) =>
+      selectedIds.includes(player.id),
+    );
+    const shuffledByRating = [...selectedPlayers];
+
+    for (let index = shuffledByRating.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [shuffledByRating[index], shuffledByRating[randomIndex]] = [
+        shuffledByRating[randomIndex],
+        shuffledByRating[index],
+      ];
     }
+
+    shuffledByRating.sort((a, b) => b.rating - a.rating);
+
+    const teamCount = Math.ceil(selectedPlayers.length / teamSize);
+    const newTeams: Player[][] = Array.from(
+      { length: teamCount },
+      () => [],
+    );
+    const teamStrength = newTeams.map(() => 0);
+
+    shuffledByRating.forEach((player) => {
+      const availableTeams = newTeams
+        .map((team, index) => ({ team, index }))
+        .filter(({ team }) => team.length < teamSize);
+
+      const minimumStrength = Math.min(
+        ...availableTeams.map(({ index }) => teamStrength[index]),
+      );
+      const weakestTeams = availableTeams.filter(
+        ({ index }) => teamStrength[index] === minimumStrength,
+      );
+      const chosen =
+        weakestTeams[Math.floor(Math.random() * weakestTeams.length)];
+
+      chosen.team.push(player);
+      teamStrength[chosen.index] += player.rating;
+    });
+
     setTeams(newTeams);
-    toast.success("Times sorteados!");
+    toast.success("Times sorteados equilibrando as estrelas!");
   };
 
   return (
     <div className="space-y-5 pb-20">
       {teams.length === 0 && (
         <>
-      <section className="space-y-4 rounded-[32px] border border-slate-200 bg-white p-4 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-        <div className="flex items-center gap-3">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-            <span className="text-lg font-semibold">B</span>
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-slate-950">Baba dos Aposentados</h2>
-            <p className="text-sm text-slate-500">
-              {manageOnly
-                ? "Cadastre os jogadores e avalie cada atleta."
-                : "Selecione os presentes e sorteie os times."}
-            </p>
-          </div>
-        </div>
-      </section>
+          <section className="space-y-4 rounded-[32px] border border-slate-200 bg-white p-4 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                <span className="text-lg font-semibold">B</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">Baba dos Aposentados</h2>
+                <p className="text-sm text-slate-500">
+                  {manageOnly
+                    ? "Cadastre os jogadores e avalie cada atleta."
+                    : "Selecione os presentes e sorteie os times."}
+                </p>
+              </div>
+            </div>
+          </section>
 
-      <section className="space-y-4 rounded-[32px] border border-slate-200 bg-white p-4 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-950">Jogadores disponíveis</h2>
-            <p className="text-sm text-slate-500">
-              {manageOnly
-                ? "Adicione, avalie e gerencie a lista permanente."
-                : "Selecione quem vai participar da partida de hoje."}
-            </p>
-          </div>
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
-            {manageOnly ? `${players.length} jogadores` : `${selectedCount} de ${players.length}`}
-          </span>
-        </div>
+          <section className="space-y-4 rounded-[32px] border border-slate-200 bg-white p-4 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">Jogadores disponíveis</h2>
+                <p className="text-sm text-slate-500">
+                  {manageOnly
+                    ? "Adicione, avalie e gerencie a lista permanente."
+                    : "Selecione quem vai participar da partida de hoje."}
+                </p>
+              </div>
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
+                {manageOnly ? `${players.length} jogadores` : `${selectedCount} de ${players.length}`}
+              </span>
+            </div>
 
-        {manageOnly && (
-          <form onSubmit={addPlayer} className="grid gap-3 sm:grid-cols-[1fr,auto]">
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <label className="sr-only" htmlFor="nome">Nome do jogador</label>
-              <input
-                id="nome"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Nome do jogador"
-                maxLength={30}
-                className="w-full border-none bg-transparent text-slate-950 outline-none placeholder:text-slate-400"
-              />
-              <div className="mt-3 flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-slate-500">Avaliação ao cadastrar</span>
-                <div className="flex items-center gap-1" role="radiogroup" aria-label="Avaliação do novo jogador">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <button
-                      key={rating}
-                      type="button"
-                      role="radio"
-                      aria-checked={newPlayerRating === rating}
-                      aria-label={`Avaliar novo jogador com ${rating} ${rating === 1 ? "estrela" : "estrelas"}`}
-                      onClick={() => setNewPlayerRating(rating)}
-                      className="rounded-md text-amber-400"
-                    >
-                      <Star
-                        className={`h-5 w-5 ${rating <= newPlayerRating ? "fill-current" : "fill-transparent text-slate-300"}`}
+            {manageOnly && (
+              <form onSubmit={addPlayer} className="grid gap-3 sm:grid-cols-[1fr,auto]">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <label className="sr-only" htmlFor="nome">Nome do jogador</label>
+                  <input
+                    id="nome"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Nome do jogador"
+                    maxLength={30}
+                    className="w-full border-none bg-transparent text-slate-950 outline-none placeholder:text-slate-400"
+                  />
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium text-slate-500">Avaliação ao cadastrar</span>
+                    <div className="flex items-center gap-1" role="radiogroup" aria-label="Avaliação do novo jogador">
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        <button
+                          key={rating}
+                          type="button"
+                          role="radio"
+                          aria-checked={newPlayerRating === rating}
+                          aria-label={`Avaliar novo jogador com ${rating} ${rating === 1 ? "estrela" : "estrelas"}`}
+                          onClick={() => setNewPlayerRating(rating)}
+                          className="rounded-md text-amber-400"
+                        >
+                          <Star
+                            className={`h-5 w-5 ${rating <= newPlayerRating ? "fill-current" : "fill-transparent text-slate-300"}`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-3xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
+                  <Plus className="h-4 w-4" /> Adicionar
+                </button>
+              </form>
+            )}
+
+            {!manageOnly && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  {[5, 6].map((size) => (
+                    <label key={size} className={`flex cursor-pointer items-center gap-3 rounded-3xl border px-4 py-3 ${teamSize === size ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-700"}`}>
+                      <input
+                        type="radio"
+                        name="teamSize"
+                        checked={teamSize === size}
+                        onChange={() => setTeamSize(size)}
+                        className="h-4 w-4 text-emerald-600"
                       />
-                    </button>
+                      <span className="text-sm font-medium">Times com {size}</span>
+                    </label>
                   ))}
                 </div>
-              </div>
-            </div>
-            <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-3xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500">
-              <Plus className="h-4 w-4" /> Adicionar
-            </button>
-          </form>
-        )}
-
-        {!manageOnly && (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              {[5, 6].map((size) => (
-                <label key={size} className={`flex cursor-pointer items-center gap-3 rounded-3xl border px-4 py-3 ${teamSize === size ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-700"}`}>
-                  <input
-                    type="radio"
-                    name="teamSize"
-                    checked={teamSize === size}
-                    onChange={() => setTeamSize(size)}
-                    className="h-4 w-4 text-emerald-600"
-                  />
-                  <span className="text-sm font-medium">Times com {size}</span>
-                </label>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setPlayerPickerOpen(true)}
-              className="flex w-full items-center justify-between rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
-            >
-              <span className="flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm">
-                  <Users className="h-5 w-5" />
-                </span>
-                <span>
-                  <span className="block text-sm font-semibold text-slate-950">Selecionar jogadores</span>
-                  <span className="mt-0.5 block text-xs text-slate-500">
-                    {selectedCount === 0
-                      ? "Nenhum jogador selecionado"
-                      : `${selectedCount} selecionados para hoje`}
+                <button
+                  type="button"
+                  onClick={() => setPlayerPickerOpen(true)}
+                  className="flex w-full items-center justify-between rounded-3xl border border-slate-200 bg-slate-50 px-4 py-4 text-left transition hover:border-emerald-300 hover:bg-emerald-50"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm">
+                      <Users className="h-5 w-5" />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-semibold text-slate-950">Selecionar jogadores</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">
+                        {selectedCount === 0
+                          ? "Nenhum jogador selecionado"
+                          : `${selectedCount} selecionados para hoje`}
+                      </span>
+                    </span>
                   </span>
-                </span>
-              </span>
-              <span className="text-lg font-semibold text-slate-400">›</span>
-            </button>
-
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-slate-700">Jogadores confirmados</p>
-              {selectedCount === 0 ? (
-                <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
-                  Nenhum jogador selecionado para o sorteio.
-                </div>
-              ) : (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {players
-                    .filter((player) => selectedIds.includes(player.id))
-                    .map((player) => (
-                      <div
-                        key={player.id}
-                        className="flex items-center justify-between gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3"
-                      >
-                        <span className="min-w-0 truncate text-sm font-medium text-slate-950">
-                          {player.name}
-                        </span>
-                        <span className="flex shrink-0 items-center gap-0.5" aria-label={`${player.rating} estrelas`}>
-                          {[1, 2, 3, 4, 5].map((rating) => (
-                            <Star
-                              key={rating}
-                              aria-hidden="true"
-                              className={`h-3.5 w-3.5 ${
-                                rating <= player.rating
-                                  ? "fill-amber-400 text-amber-400"
-                                  : "fill-transparent text-slate-300"
-                              }`}
-                            />
-                          ))}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {manageOnly && <div className="space-y-3">
-          {players.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
-              Nenhum jogador adicionado ainda.
-            </div>
-          ) : players.map((player) => (
-            <div key={player.id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                {!manageOnly && (
-                  <button
-                    type="button"
-                    onClick={() => toggleSelection(player.id)}
-                    aria-pressed={selectedIds.includes(player.id)}
-                    aria-label={`${selectedIds.includes(player.id) ? "Desmarcar" : "Selecionar"} ${player.name}`}
-                    className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border ${selectedIds.includes(player.id) ? "border-emerald-500 bg-emerald-500/10 text-emerald-700" : "border-slate-200 bg-white text-slate-400"}`}
-                  >
-                    <CheckCircle2 className={`h-5 w-5 ${selectedIds.includes(player.id) ? "" : "opacity-30"}`} />
-                  </button>
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-slate-950">{player.name}</span>
-                  <span className="mt-1 flex items-center gap-0.5" aria-label={`${player.rating} estrelas`}>
-                    {[1, 2, 3, 4, 5].map((rating) => (
-                      <Star
-                        key={rating}
-                        aria-hidden="true"
-                        className={`h-4 w-4 ${rating <= player.rating ? "fill-amber-400 text-amber-400" : "fill-transparent text-slate-300"}`}
-                      />
-                    ))}
-                  </span>
-                </span>
-              </div>
-              {manageOnly && (
-                <button type="button" onClick={() => removePlayer(player)} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-rose-500 transition hover:bg-rose-50" aria-label={`Excluir definitivamente ${player.name}`}>
-                  <Trash2 className="h-5 w-5" />
+                  <span className="text-lg font-semibold text-slate-400">›</span>
                 </button>
-              )}
-            </div>
-          ))}
-        </div>}
 
-        {!manageOnly && (
-          <>
-            <div className="rounded-3xl bg-emerald-50 px-4 py-4 text-sm text-slate-900 shadow-sm">
-              <p className="font-semibold text-emerald-700">{selectedCount} {selectedCount === 1 ? "jogador selecionado" : "jogadores selecionados"}</p>
-              <p className="mt-1 text-slate-600">
-                {selectedCount >= teamSize
-                  ? `Serão formados ${Math.ceil(selectedCount / teamSize)} times de até ${teamSize}`
-                  : `Selecione ao menos ${teamSize} jogadores`}
-              </p>
-            </div>
-            <button onClick={sortTeams} type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-3xl bg-emerald-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-emerald-500">
-              <Shuffle className="h-5 w-5" /> Sortear Times
-            </button>
-          </>
-        )}
-      </section>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-slate-700">Jogadores confirmados</p>
+                  {selectedCount === 0 ? (
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+                      Nenhum jogador selecionado para o sorteio.
+                    </div>
+                  ) : (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {players
+                        .filter((player) => selectedIds.includes(player.id))
+                        .map((player) => (
+                          <div
+                            key={player.id}
+                            className="flex items-center justify-between gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-3 py-3"
+                          >
+                            <span className="min-w-0 truncate text-sm font-medium text-slate-950">
+                              {player.name}
+                            </span>
+                            <span className="flex shrink-0 items-center gap-0.5" aria-label={`${player.rating} estrelas`}>
+                              {[1, 2, 3, 4, 5].map((rating) => (
+                                <Star
+                                  key={rating}
+                                  aria-hidden="true"
+                                  className={`h-3.5 w-3.5 ${rating <= player.rating
+                                    ? "fill-amber-400 text-amber-400"
+                                    : "fill-transparent text-slate-300"
+                                    }`}
+                                />
+                              ))}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {manageOnly && <div className="space-y-3">
+              {players.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
+                  Nenhum jogador adicionado ainda.
+                </div>
+              ) : players.map((player) => (
+                <div key={player.id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    {!manageOnly && (
+                      <button
+                        type="button"
+                        onClick={() => toggleSelection(player.id)}
+                        aria-pressed={selectedIds.includes(player.id)}
+                        aria-label={`${selectedIds.includes(player.id) ? "Desmarcar" : "Selecionar"} ${player.name}`}
+                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border ${selectedIds.includes(player.id) ? "border-emerald-500 bg-emerald-500/10 text-emerald-700" : "border-slate-200 bg-white text-slate-400"}`}
+                      >
+                        <CheckCircle2 className={`h-5 w-5 ${selectedIds.includes(player.id) ? "" : "opacity-30"}`} />
+                      </button>
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-slate-950">{player.name}</span>
+                      <span className="mt-1 flex items-center gap-0.5" aria-label={`${player.rating} estrelas`}>
+                        {[1, 2, 3, 4, 5].map((rating) => (
+                          <Star
+                            key={rating}
+                            aria-hidden="true"
+                            className={`h-4 w-4 ${rating <= player.rating ? "fill-amber-400 text-amber-400" : "fill-transparent text-slate-300"}`}
+                          />
+                        ))}
+                      </span>
+                    </span>
+                  </div>
+                  {manageOnly && (
+                    <button type="button" onClick={() => removePlayer(player)} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-rose-500 transition hover:bg-rose-50" aria-label={`Excluir definitivamente ${player.name}`}>
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>}
+
+            {!manageOnly && (
+              <>
+                <div className="rounded-3xl bg-emerald-50 px-4 py-4 text-sm text-slate-900 shadow-sm">
+                  <p className="font-semibold text-emerald-700">{selectedCount} {selectedCount === 1 ? "jogador selecionado" : "jogadores selecionados"}</p>
+                  <p className="mt-1 text-slate-600">
+                    {selectedCount >= teamSize
+                      ? `Serão formados ${Math.ceil(selectedCount / teamSize)} times de até ${teamSize}`
+                      : `Selecione ao menos ${teamSize} jogadores`}
+                  </p>
+                </div>
+                <button onClick={sortTeams} type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-3xl bg-emerald-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-emerald-500">
+                  <Shuffle className="h-5 w-5" /> Sortear Times
+                </button>
+              </>
+            )}
+          </section>
         </>
       )}
 
@@ -539,11 +571,10 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
                     type="button"
                     onClick={() => toggleSelection(player.id)}
                     aria-pressed={selected}
-                    className={`flex w-full items-center justify-between gap-3 rounded-3xl border px-4 py-3 text-left transition ${
-                      selected
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-slate-200 bg-white"
-                    }`}
+                    className={`flex w-full items-center justify-between gap-3 rounded-3xl border px-4 py-3 text-left transition ${selected
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-slate-200 bg-white"
+                      }`}
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-slate-950">{player.name}</span>
