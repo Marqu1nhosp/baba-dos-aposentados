@@ -15,7 +15,6 @@ export const config = {
   matcher: [
     "/",
     "/jogadores/:path*",
-    "/replay/:path*",
     "/api/players/:path*",
   ],
 };

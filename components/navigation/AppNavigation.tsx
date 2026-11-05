@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Camera, Home, Users } from "lucide-react";
+import { Home, Users } from "lucide-react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 
 export function AppNavigation() {
@@ -20,10 +20,6 @@ export function AppNavigation() {
         <Link href="/jogadores" className="flex min-w-[64px] flex-col items-center gap-1 rounded-3xl px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">
           <Users className="h-5 w-5" />
           <span>Jogadores</span>
-        </Link>
-        <Link href="/replay" className="flex min-w-[64px] flex-col items-center gap-1 rounded-3xl px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">
-          <Camera className="h-5 w-5" />
-          <span>Replay</span>
         </Link>
         <LogoutButton />
       </div>
