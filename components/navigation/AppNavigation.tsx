@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users } from "lucide-react";
+import { ClipboardList, Home, Users } from "lucide-react";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 
 export function AppNavigation() {
@@ -16,6 +16,10 @@ export function AppNavigation() {
         <Link href="/" className="flex min-w-[64px] flex-col items-center gap-1 rounded-3xl px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">
           <Home className="h-5 w-5" />
           <span>Sorteio</span>
+        </Link>
+        <Link href="/resultado" className="flex min-w-[64px] flex-col items-center gap-1 rounded-3xl px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">
+          <ClipboardList className="h-5 w-5" />
+          <span>Resultados</span>
         </Link>
         <Link href="/jogadores" className="flex min-w-[64px] flex-col items-center gap-1 rounded-3xl px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700">
           <Users className="h-5 w-5" />

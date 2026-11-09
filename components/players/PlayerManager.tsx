@@ -1,15 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
 import {
-  ArrowLeft,
   CheckCircle2,
-  ClipboardCopy,
-  Gift,
   Plus,
-  Share2,
-  Shield,
-  Shirt,
+  Search,
   Shuffle,
   Star,
   Trash2,
@@ -24,13 +20,9 @@ export interface Player {
   rating: number;
 }
 
-const teamColorOptions = [
-  { headerClass: "bg-rose-600", badgeClass: "bg-rose-600 text-white", emoji: "🔴" },
-  { headerClass: "bg-blue-600", badgeClass: "bg-blue-600 text-white", emoji: "🔵" },
-  { headerClass: "bg-emerald-600", badgeClass: "bg-emerald-600 text-white", emoji: "🟢" },
-  { headerClass: "bg-amber-500", badgeClass: "bg-amber-500 text-white", emoji: "🟡" },
-  { headerClass: "bg-black", badgeClass: "bg-black text-white", emoji: "⚫" },
-] as const;
+const selectedPlayersStorageKey = "baba-selected-player-ids";
+const drawResultStorageKey = "baba-draw-result";
+const drawResultDurationMs = 15 * 60 * 1000;
 
 interface PlayerManagerProps {
   initialPlayers: Player[];
@@ -38,16 +30,49 @@ interface PlayerManagerProps {
 }
 
 export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerManagerProps) {
+  const router = useRouter();
   const [players, setPlayers] = useState(initialPlayers);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [newPlayerRating, setNewPlayerRating] = useState(3);
   const [teamSize, setTeamSize] = useState(6);
-  const [teams, setTeams] = useState<Player[][]>([]);
   const [playerPickerOpen, setPlayerPickerOpen] = useState(false);
+  const [addPlayerModalOpen, setAddPlayerModalOpen] = useState(false);
+  const [playerSearch, setPlayerSearch] = useState("");
+  const [selectionLoaded, setSelectionLoaded] = useState(false);
   const selectedCount = players.filter((player) => selectedIds.includes(player.id)).length;
+  const filteredPlayers = players.filter((player) =>
+    player.name.toLocaleLowerCase("pt-BR").includes(playerSearch.trim().toLocaleLowerCase("pt-BR")),
+  );
 
-  const addPlayer = async (event: FormEvent) => {
+  useEffect(() => {
+    try {
+      const savedSelection = window.sessionStorage.getItem(selectedPlayersStorageKey);
+      if (savedSelection) {
+        const parsed: unknown = JSON.parse(savedSelection);
+        if (Array.isArray(parsed) && parsed.every((id) => typeof id === "string")) {
+          setSelectedIds(parsed);
+        } else {
+          toast.error("Não foi possível restaurar a seleção de jogadores salva.");
+        }
+      }
+    } catch {
+      toast.error("Não foi possível acessar a seleção de jogadores salva.");
+    } finally {
+      setSelectionLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectionLoaded) return;
+    try {
+      window.sessionStorage.setItem(selectedPlayersStorageKey, JSON.stringify(selectedIds));
+    } catch {
+      toast.error("Não foi possível salvar a seleção de jogadores.");
+    }
+  }, [selectedIds, selectionLoaded]);
+
+  const addPlayer = async (event: FormEvent, selectAfterAdd = false) => {
     event.preventDefault();
     const trimmedName = name.trim();
     if (trimmedName.length < 2) {
@@ -86,6 +111,11 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
     }
 
     setPlayers((current) => [...current, result].sort((a, b) => a.name.localeCompare(b.name)));
+    if (selectAfterAdd) {
+      setSelectedIds((current) => [...current, result.id]);
+      setPlayerSearch("");
+      setAddPlayerModalOpen(false);
+    }
     setName("");
     setNewPlayerRating(3);
     toast.success("Jogador adicionado com sucesso.");
@@ -141,6 +171,12 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
     shuffledByRating.sort((a, b) => b.rating - a.rating);
 
     const teamCount = Math.ceil(selectedPlayers.length / teamSize);
+    const remainingPlayers = selectedPlayers.length % teamSize;
+    const teamCapacities = Array.from({ length: teamCount }, (_, index) =>
+      remainingPlayers > 0 && index === teamCount - 1
+        ? remainingPlayers
+        : teamSize,
+    );
     const newTeams: Player[][] = Array.from(
       { length: teamCount },
       () => [],
@@ -150,12 +186,18 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
     shuffledByRating.forEach((player) => {
       const availableTeams = newTeams
         .map((team, index) => ({ team, index }))
-        .filter(({ team }) => team.length < teamSize);
+        .filter(({ team, index }) => team.length < teamCapacities[index]);
 
-      const minimumStrength = Math.min(
-        ...availableTeams.map(({ index }) => teamStrength[index]),
+      const minimumPlayerCount = Math.min(
+        ...availableTeams.map(({ team }) => team.length),
       );
-      const weakestTeams = availableTeams.filter(
+      const teamsWithSpace = availableTeams.filter(
+        ({ team }) => team.length === minimumPlayerCount,
+      );
+      const minimumStrength = Math.min(
+        ...teamsWithSpace.map(({ index }) => teamStrength[index]),
+      );
+      const weakestTeams = teamsWithSpace.filter(
         ({ index }) => teamStrength[index] === minimumStrength,
       );
       const chosen =
@@ -165,15 +207,26 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
       teamStrength[chosen.index] += player.rating;
     });
 
-    setTeams(newTeams);
+    try {
+      window.sessionStorage.setItem(
+        drawResultStorageKey,
+        JSON.stringify({
+          teams: newTeams,
+          teamSize,
+          expiresAt: Date.now() + drawResultDurationMs,
+        }),
+      );
+    } catch {
+      toast.error("Não foi possível salvar o resultado do sorteio.");
+      return;
+    }
     toast.success("Times sorteados equilibrando as estrelas!");
+    router.push("/resultado");
   };
 
   return (
     <div className="space-y-5 pb-20">
-      {teams.length === 0 && (
-        <>
-          <section className="space-y-4 rounded-[32px] border border-slate-200 bg-white p-4 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
+      <section className="space-y-4 rounded-[32px] border border-slate-200 bg-white p-4 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
             <div className="flex items-center gap-3">
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
                 <span className="text-lg font-semibold">B</span>
@@ -245,20 +298,46 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
 
             {!manageOnly && (
               <>
-                <div className="grid grid-cols-2 gap-3">
-                  {[5, 6].map((size) => (
-                    <label key={size} className={`flex cursor-pointer items-center gap-3 rounded-3xl border px-4 py-3 ${teamSize === size ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-700"}`}>
-                      <input
-                        type="radio"
-                        name="teamSize"
-                        checked={teamSize === size}
-                        onChange={() => setTeamSize(size)}
-                        className="h-4 w-4 text-emerald-600"
-                      />
-                      <span className="text-sm font-medium">Times com {size}</span>
-                    </label>
-                  ))}
-                </div>
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-semibold text-slate-700">
+                    Quantos jogadores por time?
+                  </legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[5, 6].map((size) => (
+                      <label
+                        key={size}
+                        className={`flex cursor-pointer items-center gap-2 rounded-2xl border p-3 transition ${
+                          teamSize === size
+                            ? "border-emerald-500 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-100"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="teamSize"
+                          value={size}
+                          checked={teamSize === size}
+                          onChange={() => setTeamSize(size)}
+                          className="sr-only"
+                        />
+                        <span
+                          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold ${
+                            teamSize === size
+                              ? "bg-emerald-600 text-white"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {size}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold">
+                            Times com {size}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
                 <button
                   type="button"
                   onClick={() => setPlayerPickerOpen(true)}
@@ -374,141 +453,7 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
                 </button>
               </>
             )}
-          </section>
-        </>
-      )}
-
-      {teams.length > 0 && (
-        <div className="space-y-5 pb-28">
-          <section className="rounded-[32px] bg-emerald-600 p-5 text-white shadow-[0_24px_80px_rgba(14,101,45,0.16)]">
-            <button
-              onClick={() => setTeams([])}
-              type="button"
-              className="inline-flex items-center gap-3 text-sm font-semibold text-white opacity-90 hover:opacity-100"
-            >
-              <ArrowLeft className="h-5 w-5" /> Voltar
-            </button>
-            <div className="mt-6 text-center">
-              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/10 text-emerald-100 shadow-sm">
-                <Gift className="h-10 w-10" />
-              </div>
-              <h1 className="text-2xl font-semibold">Times sorteados!</h1>
-              <p className="mt-2 text-sm text-emerald-100/80">Boa partida!</p>
-              <p className="mt-3 text-sm font-semibold text-emerald-100/90">
-                {teams.length} {teams.length === 1 ? "time" : "times"} de até {teamSize} jogadores
-              </p>
-            </div>
-          </section>
-
-          <div className="space-y-4">
-            {teams.map((team, index) => {
-              const teamStyle = teamColorOptions[index % teamColorOptions.length];
-              const strength = team.reduce((sum, player) => sum + player.rating, 0);
-              return (
-                <section key={index} className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
-                  <div className={`relative flex items-center gap-3 overflow-hidden px-5 py-4 text-sm font-semibold text-white ${teamStyle.headerClass}`}>
-                    <div className="pointer-events-none absolute inset-0 opacity-25">
-                      <svg viewBox="0 0 480 160" className="h-full w-full" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M0 148 H480" />
-                        <path d="M240 148 V8" />
-                        <circle cx="240" cy="80" r="26" />
-                        <path d="M214 80 H266" />
-                        <path d="M48 20 H132" />
-                        <path d="M348 20 H432" />
-                      </svg>
-                    </div>
-                    <span className="relative z-10 inline-flex h-11 w-11 items-center justify-center rounded-3xl bg-white/15 text-lg">
-                      <Shield className="h-5 w-5" />
-                    </span>
-                    <div className="relative z-10">
-                      <span className="block text-xl uppercase tracking-[0.18em]">Time {index + 1}</span>
-                      <span className="block text-xs font-medium text-white/80">Força: {strength}</span>
-                    </div>
-                  </div>
-
-                  <div className="divide-y divide-slate-200">
-                    {team.map((player, playerIndex) => (
-                      <div key={player.id} className="flex items-center gap-4 px-5 py-4 text-sm text-slate-950">
-                        <div className={`relative flex h-14 w-14 items-center justify-center rounded-3xl ${teamStyle.badgeClass}`}>
-                          <Shirt className="absolute h-8 w-8 text-white/80" />
-                          <span className="relative z-10 text-base font-semibold text-white">{playerIndex + 1}</span>
-                        </div>
-                        <div className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-3xl bg-slate-50 px-4 py-3 shadow-sm">
-                          <span className="truncate font-medium">{player.name}</span>
-                          <span className="flex shrink-0 items-center gap-0.5" aria-label={`${player.rating} estrelas`}>
-                            {[1, 2, 3, 4, 5].map((rating) => (
-                              <Star
-                                key={rating}
-                                aria-hidden="true"
-                                className={`h-3.5 w-3.5 ${rating <= player.rating ? "fill-amber-400 text-amber-400" : "fill-transparent text-slate-300"}`}
-                              />
-                            ))}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center justify-center gap-2 border-t border-slate-200/70 bg-slate-50 px-5 py-3 text-sm text-slate-700">
-                    <Users className="h-4 w-4 text-slate-500" />
-                    <span>{team.length} Jogadores</span>
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-
-          <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-yellow-100 text-yellow-700">
-                <span className="text-xl">💡</span>
-              </div>
-              <div>
-                <p className="font-semibold text-slate-900">Dica</p>
-                <p className="text-sm text-slate-500">Salve esse resultado ou compartilhe com o grupo do Baba dos Aposentados!</p>
-              </div>
-            </div>
-          </section>
-
-          <button
-            onClick={async () => {
-              const text = ["⚽ BABA DOS APOSENTADOS", ""]
-                .concat(teams.flatMap((team, index) => [
-                  `${teamColorOptions[index % teamColorOptions.length].emoji} TIME ${index + 1}`,
-                  ...team.map((player) => `• ${player.name}`),
-                  "",
-                ]))
-                .join("\n");
-              try {
-                await navigator.clipboard.writeText(text);
-                toast.success("Resultado copiado");
-              } catch {
-                toast.error("Não foi possível copiar o resultado");
-              }
-            }}
-            type="button"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-50"
-          >
-            <ClipboardCopy className="h-5 w-5" /> Copiar Resultado
-          </button>
-          <button
-            onClick={() => {
-              const text = ["⚽ BABA DOS APOSENTADOS", ""]
-                .concat(teams.flatMap((team, index) => [
-                  `${teamColorOptions[index % teamColorOptions.length].emoji} TIME ${index + 1}`,
-                  ...team.map((player) => `• ${player.name}`),
-                  "",
-                ]))
-                .join("\n");
-              window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
-            }}
-            type="button"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-3xl bg-emerald-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-emerald-500"
-          >
-            <Share2 className="h-5 w-5" /> Compartilhar no WhatsApp
-          </button>
-        </div>
-      )}
+      </section>
 
       {playerPickerOpen && !manageOnly && (
         <div
@@ -558,12 +503,34 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
               </button>
             </div>
 
-            <div className="max-h-[52vh] space-y-2 overflow-y-auto p-5">
-              {players.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
-                  Cadastre jogadores na página Jogadores.
+            <div className="max-h-[52vh] space-y-3 overflow-y-auto p-5">
+              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <Search className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                <span className="sr-only">Pesquisar jogador pelo nome</span>
+                <input
+                  type="search"
+                  value={playerSearch}
+                  onChange={(event) => setPlayerSearch(event.target.value)}
+                  placeholder="Pesquisar jogador pelo nome"
+                  className="w-full bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400"
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={() => setAddPlayerModalOpen(true)}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+              >
+                <Plus className="h-4 w-4" /> Adicionar novo jogador
+              </button>
+
+              {filteredPlayers.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                  {players.length === 0
+                    ? "Nenhum jogador cadastrado. Adicione um jogador acima."
+                    : "Nenhum jogador encontrado com esse nome."}
                 </div>
-              ) : players.map((player) => {
+              ) : filteredPlayers.map((player) => {
                 const selected = selectedIds.includes(player.id);
                 return (
                   <button
@@ -605,6 +572,95 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
                 Confirmar seleção
               </button>
             </div>
+          </section>
+        </div>
+      )}
+
+      {addPlayerModalOpen && !manageOnly && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setAddPlayerModalOpen(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-player-title"
+            className="w-full max-w-sm rounded-[32px] bg-white p-5 shadow-2xl"
+          >
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <h2 id="add-player-title" className="text-lg font-semibold text-slate-950">
+                Adicionar jogador
+              </h2>
+              <button
+                type="button"
+                onClick={() => setAddPlayerModalOpen(false)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600"
+                aria-label="Fechar cadastro de jogador"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={(event) => addPlayer(event, true)} className="space-y-4">
+              <div>
+                <label
+                  className="mb-2 block text-sm font-medium text-slate-700"
+                  htmlFor="novo-jogador-selecao"
+                >
+                  Nome do jogador
+                </label>
+                <input
+                  id="novo-jogador-selecao"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Nome do jogador"
+                  maxLength={30}
+                  autoFocus
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:border-emerald-500"
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-slate-700">Estrelas</span>
+                <div
+                  className="flex items-center gap-1"
+                  role="radiogroup"
+                  aria-label="Avaliação do novo jogador"
+                >
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button
+                      key={rating}
+                      type="button"
+                      role="radio"
+                      aria-checked={newPlayerRating === rating}
+                      aria-label={`Avaliar novo jogador com ${rating} ${rating === 1 ? "estrela" : "estrelas"}`}
+                      onClick={() => setNewPlayerRating(rating)}
+                      className="rounded-md text-amber-400"
+                    >
+                      <Star
+                        className={`h-5 w-5 ${rating <= newPlayerRating ? "fill-current" : "fill-transparent text-slate-300"}`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setAddPlayerModalOpen(false)}
+                  className="flex-1 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                >
+                  Adicionar
+                </button>
+              </div>
+            </form>
           </section>
         </div>
       )}

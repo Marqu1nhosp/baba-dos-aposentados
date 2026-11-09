@@ -2,11 +2,18 @@
 
 import { LogOut } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { toast } from "sonner";
 
 export function LogoutButton() {
   const pathname = usePathname();
 
   const logout = async () => {
+    try {
+      window.sessionStorage.removeItem("baba-selected-player-ids");
+    } catch {
+      toast.error("Não foi possível limpar os jogadores selecionados.");
+    }
+
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
