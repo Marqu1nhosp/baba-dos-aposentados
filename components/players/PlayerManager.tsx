@@ -39,7 +39,7 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [newPlayerRating, setNewPlayerRating] = useState(3);
-  const [teamSize, setTeamSize] = useState(6);
+  const [teamSize, setTeamSize] = useState<number | null>(null);
   const [playerPickerOpen, setPlayerPickerOpen] = useState(false);
   const [addPlayerModalOpen, setAddPlayerModalOpen] = useState(false);
   const [playerSearch, setPlayerSearch] = useState("");
@@ -160,6 +160,10 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
   };
 
   const sortTeams = () => {
+    if (teamSize === null) {
+      toast.error("Selecione quantos jogadores por time.");
+      return;
+    }
     if (selectedCount < teamSize) {
       toast.error(`Selecione pelo menos ${teamSize} jogadores.`);
       return;
@@ -472,7 +476,9 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
                 <div className="rounded-3xl bg-emerald-50 px-4 py-4 text-sm text-slate-900 shadow-sm">
                   <p className="font-semibold text-emerald-700">{selectedCount} {selectedCount === 1 ? "jogador selecionado" : "jogadores selecionados"}</p>
                   <p className="mt-1 text-slate-600">
-                    {selectedCount >= teamSize
+                    {teamSize === null
+                      ? "Escolha quantos jogadores por time."
+                      : selectedCount >= teamSize
                       ? `Serão formados ${Math.ceil(selectedCount / teamSize)} times de até ${teamSize}`
                       : `Selecione ao menos ${teamSize} jogadores`}
                   </p>
