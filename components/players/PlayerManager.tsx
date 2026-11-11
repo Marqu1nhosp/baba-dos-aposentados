@@ -412,11 +412,26 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
             )}
 
             {manageOnly && <div className="space-y-3">
+              <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <Search className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                <span className="sr-only">Pesquisar jogador pelo nome</span>
+                <input
+                  type="search"
+                  value={playerSearch}
+                  onChange={(event) => setPlayerSearch(event.target.value)}
+                  placeholder="Pesquisar jogador pelo nome"
+                  className="w-full bg-transparent text-base text-slate-950 outline-none placeholder:text-slate-400"
+                />
+              </label>
               {players.length === 0 ? (
                 <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
                   Nenhum jogador adicionado ainda.
                 </div>
-              ) : players.map((player) => (
+              ) : filteredPlayers.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                  Nenhum jogador encontrado com esse nome.
+                </div>
+              ) : filteredPlayers.map((player) => (
                 <div key={player.id} className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     {!manageOnly && (
