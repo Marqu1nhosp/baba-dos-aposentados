@@ -526,7 +526,7 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
                   value={playerSearch}
                   onChange={(event) => setPlayerSearch(event.target.value)}
                   placeholder="Pesquisar jogador pelo nome"
-                  className="w-full bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400"
+                  className="w-full bg-transparent text-base text-slate-950 outline-none placeholder:text-slate-400"
                 />
               </label>
 
