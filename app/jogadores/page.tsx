@@ -1,4 +1,5 @@
-import { PlayerManager, type Player } from "@/components/players/PlayerManager";
+import { PlayerManager } from "@/components/players/PlayerManager";
+import type { Player } from "@/components/players/PlayerProvider";
 import { getPlayers } from "@/lib/players";
 
 export const dynamic = "force-dynamic";

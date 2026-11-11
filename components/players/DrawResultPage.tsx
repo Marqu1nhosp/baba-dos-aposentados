@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { Player } from "@/components/players/PlayerManager";
+import type { Player } from "@/components/players/PlayerProvider";
 
 const drawResultStorageKey = "baba-draw-result";
 const teamColorOptions = [

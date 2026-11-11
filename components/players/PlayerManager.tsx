@@ -13,12 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-
-export interface Player {
-  id: string;
-  name: string;
-  rating: number;
-}
+import { useSharedPlayers, type Player } from "@/components/players/PlayerProvider";
 
 const selectedPlayersStorageKey = "baba-selected-player-ids";
 const drawResultStorageKey = "baba-draw-result";
@@ -39,7 +34,8 @@ interface PlayerManagerProps {
 
 export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerManagerProps) {
   const router = useRouter();
-  const [players, setPlayers] = useState(initialPlayers);
+  const { players: sharedPlayers, setPlayers } = useSharedPlayers();
+  const players = sharedPlayers ?? initialPlayers;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [name, setName] = useState("");
   const [newPlayerRating, setNewPlayerRating] = useState(3);
@@ -124,7 +120,9 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
       return;
     }
 
-    setPlayers((current) => [...current, result].sort((a, b) => a.name.localeCompare(b.name)));
+    setPlayers((current) =>
+      [...(current ?? initialPlayers), result].sort((a, b) => a.name.localeCompare(b.name)),
+    );
     if (selectAfterAdd) {
       setSelectedIds((current) => [...current, result.id]);
       setPlayerSearch("");
@@ -148,7 +146,9 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
       );
       return;
     }
-    setPlayers((current) => current.filter((item) => item.id !== player.id));
+    setPlayers((current) =>
+      (current ?? initialPlayers).filter((item) => item.id !== player.id),
+    );
     setSelectedIds((current) => current.filter((id) => id !== player.id));
     toast.success(`${player.name} removido.`);
   };

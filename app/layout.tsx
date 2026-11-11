@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ShieldCheck } from "lucide-react";
 import { Toaster } from "sonner";
 import { AppNavigation } from "@/components/navigation/AppNavigation";
+import { PlayerProvider } from "@/components/players/PlayerProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,7 +30,9 @@ export default function RootLayout({
             <p className="mt-4 text-sm text-slate-200/80">Sorteio de time do Baba Dos Aposentados.</p>
           </header>
 
-          <main className="flex-1 pb-20">{children}</main>
+          <PlayerProvider>
+            <main className="flex-1 pb-20">{children}</main>
+          </PlayerProvider>
 
           <footer className="mt-8 border-t border-slate-200/40 pt-4 text-center text-[11px] leading-6 text-slate-500">
             © 2026 Marcos Antonio Porto Matos. Todos os direitos reservados.
