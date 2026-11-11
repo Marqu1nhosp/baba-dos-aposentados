@@ -24,6 +24,14 @@ const selectedPlayersStorageKey = "baba-selected-player-ids";
 const drawResultStorageKey = "baba-draw-result";
 const drawResultDurationMs = 15 * 60 * 1000;
 
+function normalizePlayerSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
 interface PlayerManagerProps {
   initialPlayers: Player[];
   manageOnly?: boolean;
@@ -41,9 +49,15 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
   const [playerSearch, setPlayerSearch] = useState("");
   const [selectionLoaded, setSelectionLoaded] = useState(false);
   const selectedCount = players.filter((player) => selectedIds.includes(player.id)).length;
+  const normalizedPlayerSearch = normalizePlayerSearch(playerSearch);
   const filteredPlayers = players.filter((player) =>
-    player.name.toLocaleLowerCase("pt-BR").includes(playerSearch.trim().toLocaleLowerCase("pt-BR")),
+    normalizePlayerSearch(player.name).includes(normalizedPlayerSearch),
   );
+
+  function closePlayerPicker() {
+    setPlayerPickerOpen(false);
+    setPlayerSearch("");
+  }
 
   useEffect(() => {
     try {
@@ -460,7 +474,7 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
           className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setPlayerPickerOpen(false);
+            if (event.target === event.currentTarget) closePlayerPicker();
           }}
         >
           <section
@@ -478,7 +492,7 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
               </div>
               <button
                 type="button"
-                onClick={() => setPlayerPickerOpen(false)}
+                onClick={closePlayerPicker}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-600"
                 aria-label="Fechar seleção de jogadores"
               >
@@ -566,7 +580,7 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
             <div className="border-t border-slate-100 p-4">
               <button
                 type="button"
-                onClick={() => setPlayerPickerOpen(false)}
+                onClick={closePlayerPicker}
                 className="w-full rounded-3xl bg-emerald-600 px-4 py-4 text-sm font-semibold text-white transition hover:bg-emerald-500"
               >
                 Confirmar seleção
@@ -617,8 +631,7 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
                   onChange={(event) => setName(event.target.value)}
                   placeholder="Nome do jogador"
                   maxLength={30}
-                  autoFocus
-                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:border-emerald-500"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-950 outline-none placeholder:text-slate-400 focus:border-emerald-500"
                 />
               </div>
               <div className="flex items-center justify-between gap-2">

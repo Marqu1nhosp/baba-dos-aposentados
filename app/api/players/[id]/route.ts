@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { playerCacheTag } from "@/lib/players";
 import { cookies } from "next/headers";
 import { isValidSessionToken } from "@/lib/auth";
 
@@ -24,6 +26,7 @@ export async function DELETE(
   const { id } = await params;
   try {
     await prisma.player.delete({ where: { id } });
+    revalidateTag(playerCacheTag, { expire: 0 });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
     if (

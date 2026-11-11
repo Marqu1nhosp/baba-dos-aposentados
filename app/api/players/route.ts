@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { getPlayers, playerCacheTag } from "@/lib/players";
 import { cookies } from "next/headers";
 import { isValidSessionToken } from "@/lib/auth";
 
@@ -11,9 +13,7 @@ const playerCreateSchema = z.object({
 
 export async function GET() {
   try {
-    const players = await prisma.player.findMany({
-      orderBy: { name: "asc" },
-    });
+    const players = await getPlayers();
     return NextResponse.json(players);
   } catch {
     return NextResponse.json(
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     const player = await prisma.player.create({
       data: parsed.data,
     });
+    revalidateTag(playerCacheTag, { expire: 0 });
     return NextResponse.json(player, { status: 201 });
   } catch (error) {
     if (

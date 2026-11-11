@@ -1,12 +1,12 @@
-import { prisma } from "@/lib/prisma";
 import { PlayerManager, type Player } from "@/components/players/PlayerManager";
+import { getPlayers } from "@/lib/players";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlayersPage() {
   let players: Player[] = [];
   try {
-    players = await prisma.player.findMany({ orderBy: { name: "asc" } });
+    players = await getPlayers();
   } catch {
     players = [];
   }
