@@ -14,18 +14,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSharedPlayers, type Player } from "@/components/players/PlayerProvider";
+import { drawBalancedTeams, normalizePlayerSearch } from "@/lib/player-utils";
 
 const selectedPlayersStorageKey = "baba-selected-player-ids";
 const drawResultStorageKey = "baba-draw-result";
 const drawResultDurationMs = 15 * 60 * 1000;
-
-function normalizePlayerSearch(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("pt-BR")
-    .trim();
-}
 
 interface PlayerManagerProps {
   initialPlayers: Player[];
@@ -176,54 +169,7 @@ export function PlayerManager({ initialPlayers, manageOnly = false }: PlayerMana
     const selectedPlayers = players.filter((player) =>
       selectedIds.includes(player.id),
     );
-    const shuffledByRating = [...selectedPlayers];
-
-    for (let index = shuffledByRating.length - 1; index > 0; index -= 1) {
-      const randomIndex = Math.floor(Math.random() * (index + 1));
-      [shuffledByRating[index], shuffledByRating[randomIndex]] = [
-        shuffledByRating[randomIndex],
-        shuffledByRating[index],
-      ];
-    }
-
-    shuffledByRating.sort((a, b) => b.rating - a.rating);
-
-    const teamCount = Math.ceil(selectedPlayers.length / teamSize);
-    const remainingPlayers = selectedPlayers.length % teamSize;
-    const teamCapacities = Array.from({ length: teamCount }, (_, index) =>
-      remainingPlayers > 0 && index === teamCount - 1
-        ? remainingPlayers
-        : teamSize,
-    );
-    const newTeams: Player[][] = Array.from(
-      { length: teamCount },
-      () => [],
-    );
-    const teamStrength = newTeams.map(() => 0);
-
-    shuffledByRating.forEach((player) => {
-      const availableTeams = newTeams
-        .map((team, index) => ({ team, index }))
-        .filter(({ team, index }) => team.length < teamCapacities[index]);
-
-      const minimumPlayerCount = Math.min(
-        ...availableTeams.map(({ team }) => team.length),
-      );
-      const teamsWithSpace = availableTeams.filter(
-        ({ team }) => team.length === minimumPlayerCount,
-      );
-      const minimumStrength = Math.min(
-        ...teamsWithSpace.map(({ index }) => teamStrength[index]),
-      );
-      const weakestTeams = teamsWithSpace.filter(
-        ({ index }) => teamStrength[index] === minimumStrength,
-      );
-      const chosen =
-        weakestTeams[Math.floor(Math.random() * weakestTeams.length)];
-
-      chosen.team.push(player);
-      teamStrength[chosen.index] += player.rating;
-    });
+    const newTeams = drawBalancedTeams(selectedPlayers, teamSize);
 
     try {
       window.sessionStorage.setItem(
